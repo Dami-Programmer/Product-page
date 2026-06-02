@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a1628" />
+  <title>SolarVerify — Product Authentication</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+
+/* ═══════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════ */
+:root {
+  --bg:          #f0f4f8;
+  --surface:     #ffffff;
+  --surface-2:   #f7fafd;
+  --border:      rgba(15,76,53,0.1);
+  --border-2:    rgba(15,76,53,0.06);
+
+  --navy:        #0a1628;
+  --navy-2:      #112240;
+  --navy-3:      #1e3a5f;
+
+  --green:       #22c55e;
+  --green-dk:    #16a34a;
+  --green-dim:   #0f4c35;
+  --green-pale:  rgba(34,197,94,0.08);
+
+  --t1: #0a1628;
+  --t2: #334155;
+  --t3: #64748b;
+
+  --sh-sm: 0 1px 3px rgba(10,22,40,.06), 0 1px 2px rgba(10,22,40,.04);
+  --sh-md: 0 4px 16px rgba(10,22,40,.08), 0 2px 6px rgba(10,22,40,.05);
+  --sh-lg: 0 12px 40px rgba(10,22,40,.12), 0 4px 12px rgba(10,22,40,.06);
+  --sh-xl: 0 24px 64px rgba(10,22,40,.16);
+
+  --r-sm:  8px;  --r-md: 12px; --r-lg: 16px;
+  --r-xl:  24px; --r-2xl:32px; --r-f:  9999px;
+
+  --ease: cubic-bezier(0.16,1,0.3,1);
+  --fast: 150ms; --base: 250ms; --slow: 400ms;
+
+  --fd: 'Space Grotesk', system-ui, sans-serif;
+  --fb: 'Inter', system-ui, sans-serif;
+  --fm: 'SF Mono','Fira Code', monospace;
+}
+
+/* ═══════════════════════════════════════════
+   RESET
+═══════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{font-family:var(--fb);font-size:16px;line-height:1.6;color:var(--t1);background:var(--bg);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{max-width:100%;height:auto;display:block}
+a{color:inherit;text-decoration:none}
+
+/* ═══════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════ */
+.wrap{width:100%;max-width:1120px;margin:0 auto;padding:0 20px}
+@media(min-width:640px){.wrap{padding:0 24px}}
+@media(min-width:1024px){.wrap{padding:0 32px}}
+
+/* ═══════════════════════════════════════════
+   ANIMATIONS
+═══════════════════════════════════════════ */
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse-scale{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.9);opacity:.7}}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+@keyframes fade-up{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+@keyframes lb-in{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+@keyframes spin-slow{to{transform:rotate(360deg)}}
+@keyframes bar-fill{from{width:0}to{width:8%}}
+
+/* ═══════════════════════════════════════════
+   LOADER  (CSS-only: fades after 1.3s via animation-fill-mode)
+═══════════════════════════════════════════ */
+.loader{
+  position:fixed;inset:0;
+  background:var(--navy);
+  display:flex;align-items:center;justify-content:center;
+  z-index:9999;
+  animation:loader-hide 0s 1.3s forwards;
+}
+@keyframes loader-hide{to{opacity:0;visibility:hidden;pointer-events:none}}
+
+.loader-inner{display:flex;flex-direction:column;align-items:center;gap:16px;color:#8ba3bf;font-size:14px;letter-spacing:.05em}
+.loader-ring{width:56px;height:56px;border-radius:50%;border:2px solid rgba(34,197,94,.2);border-top-color:var(--green);animation:spin .9s linear infinite;position:absolute}
+.loader-logo{width:32px;height:32px;animation:pulse-scale 1.5s ease-in-out infinite}
+
+/* ═══════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════ */
+.site-header{
+  position:sticky;top:0;z-index:100;
+  background:rgba(255,255,255,.9);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border-2);
+  box-shadow:var(--sh-sm);
+}
+.header-inner{display:flex;align-items:center;justify-content:space-between;height:60px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-icon svg{width:36px;height:36px;border-radius:var(--r-sm);display:block}
+.brand-name{font-family:var(--fd);font-size:17px;font-weight:700;color:var(--navy);display:block;line-height:1.2}
+.brand-tagline{font-size:11px;color:var(--t3);display:block;letter-spacing:.03em}
+.hdr-badge{
+  display:flex;align-items:center;gap:6px;
+  background:var(--green-pale);border:1px solid rgba(34,197,94,.25);border-radius:var(--r-f);
+  padding:6px 14px;font-size:12px;font-weight:600;color:var(--green-dk);letter-spacing:.03em;
+}
+.hdr-badge svg{width:16px;height:16px;flex-shrink:0}
+
+/* ═══════════════════════════════════════════
+   SECTION BASE
+═══════════════════════════════════════════ */
+.sec{padding:64px 0}
+.sec--alt{background:var(--surface)}
+.sec-head{text-align:center;margin-bottom:40px}
+.sec-label{
+  display:inline-block;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--green-dk);background:var(--green-pale);border:1px solid rgba(34,197,94,.2);
+  border-radius:var(--r-f);padding:4px 14px;margin-bottom:12px;
+}
+.sec-title{font-family:var(--fd);font-size:clamp(22px,4vw,32px);font-weight:700;color:var(--navy);line-height:1.2;margin-bottom:12px}
+.sec-sub{font-size:15px;color:var(--t3);max-width:560px;margin:0 auto}
+
+/* ═══════════════════════════════════════════
+   HERO
+═══════════════════════════════════════════ */
+.hero{position:relative;padding:48px 0 64px;overflow:hidden}
+.hero-grid{display:grid;grid-template-columns:1fr;gap:40px;align-items:center}
+@media(min-width:768px){.hero-grid{grid-template-columns:1fr 1fr;gap:48px}}
+
+/* image side */
+.hero-img-wrap{position:relative;animation:fade-up .6s var(--ease) 1.4s both}
+.hero-img-box{
+  position:relative;border-radius:var(--r-xl);overflow:hidden;
+  box-shadow:var(--sh-xl);aspect-ratio:4/3;background:var(--navy-2);
+}
+.hero-img-box img{width:100%;height:100%;object-fit:cover;transition:transform .6s var(--ease)}
+.hero-img-box:hover img{transform:scale(1.03)}
+.img-badge{
+  position:absolute;top:16px;right:16px;
+  background:rgba(255,255,255,.95);backdrop-filter:blur(8px);
+  border-radius:var(--r-f);padding:6px 12px 6px 8px;
+  display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--green-dk);
+  box-shadow:var(--sh-md);
+}
+.img-badge svg{width:18px;height:18px}
+
+/* info side */
+.hero-info{animation:fade-up .6s var(--ease) 1.55s both}
+.hero-cat{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--green-dk);margin-bottom:12px}
+.hero-title{font-family:var(--fd);font-size:clamp(22px,5vw,36px);font-weight:700;color:var(--navy);line-height:1.15;margin-bottom:24px}
+
+.hero-meta{
+  display:flex;flex-direction:column;gap:12px;
+  margin-bottom:24px;padding:20px;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);
+}
+.meta-row{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.meta-lbl{font-size:12px;font-weight:600;color:var(--t3);letter-spacing:.04em;white-space:nowrap}
+.meta-val{font-size:14px;font-weight:600;color:var(--navy)}
+.mono{font-family:var(--fm);font-size:13px;letter-spacing:.05em}
+
+.hero-status{
+  display:inline-flex;align-items:center;gap:12px;
+  background:var(--green-pale);border:1px solid rgba(34,197,94,.3);border-radius:var(--r-lg);
+  padding:12px 20px;margin-bottom:24px;font-weight:600;color:var(--green-dk);font-size:15px;
+}
+.hero-status svg{width:20px;height:20px;flex-shrink:0}
+.pulse{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse-dot 2s ease-in-out infinite}
+
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:12px 24px;border-radius:var(--r-lg);font-size:15px;font-weight:600;
+  transition:all var(--fast) var(--ease);cursor:pointer;touch-action:manipulation;min-height:44px;
+  font-family:var(--fb);border:none;
+}
+.btn svg{width:18px;height:18px}
+.btn-p{background:var(--navy);color:#fff;box-shadow:var(--sh-md)}
+.btn-p:hover{background:var(--navy-3);transform:translateY(-1px);box-shadow:var(--sh-lg)}
+.btn-s{background:#fff;color:var(--navy);border:1.5px solid var(--border);box-shadow:var(--sh-sm)}
+.btn-s:hover{border-color:var(--navy);transform:translateY(-1px);box-shadow:var(--sh-md)}
+
+.orb{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:-1}
+.orb-1{width:400px;height:400px;background:rgba(34,197,94,.06);top:-100px;right:-100px}
+.orb-2{width:300px;height:300px;background:rgba(10,22,40,.04);bottom:-50px;left:-50px}
+
+/* ═══════════════════════════════════════════
+   OVERVIEW GRID
+═══════════════════════════════════════════ */
+.ov-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+@media(min-width:768px){.ov-grid{grid-template-columns:repeat(4,1fr)}}
+
+.ov-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:20px;display:flex;flex-direction:column;gap:12px;
+  box-shadow:var(--sh-sm);transition:transform var(--base) var(--ease),box-shadow var(--base);
+  animation:fade-up .5s var(--ease) both;
+}
+.ov-card:hover{transform:translateY(-2px);box-shadow:var(--sh-md)}
+.ov-card:nth-child(1){animation-delay:1.6s}
+.ov-card:nth-child(2){animation-delay:1.7s}
+.ov-card:nth-child(3){animation-delay:1.8s}
+.ov-card:nth-child(4){animation-delay:1.9s}
+.ov-card:nth-child(5){animation-delay:2.0s}
+.ov-card:nth-child(6){animation-delay:2.1s}
+.ov-card:nth-child(7){animation-delay:2.2s}
+.ov-card:nth-child(8){animation-delay:2.3s}
+
+.ov-icon{width:40px;height:40px;border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;background:var(--green-pale)}
+.ov-icon svg{width:20px;height:20px;stroke:var(--green-dk);fill:none}
+.ov-lbl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--t3)}
+.ov-val{font-family:var(--fd);font-size:15px;font-weight:600;color:var(--navy);line-height:1.3}
+
+/* ═══════════════════════════════════════════
+   SPECS TABLE
+═══════════════════════════════════════════ */
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden;box-shadow:var(--sh-md);overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead th{background:var(--navy);color:rgba(255,255,255,.7);font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:16px 24px;text-align:left}
+thead th:last-child{text-align:right}
+tbody td{padding:16px 24px;font-size:14px;color:var(--t2);border-bottom:1px solid var(--border-2);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody td:first-child{font-weight:500;color:var(--navy)}
+tbody td:last-child{text-align:right;font-size:12px;color:var(--t3)}
+tbody tr{transition:background var(--fast)}
+tbody tr:hover{background:var(--surface-2)}
+.sv{font-family:var(--fd);font-weight:700;font-size:15px;color:var(--navy)}
+.hi .sv{color:var(--green-dk)}
+
+
+/* ═══════════════════════════════════════════
+   WARRANTY
+═══════════════════════════════════════════ */
+.w-grid{display:grid;grid-template-columns:1fr;gap:16px;margin-bottom:32px}
+@media(min-width:480px){.w-grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:900px){.w-grid{grid-template-columns:repeat(4,1fr)}}
+
+.w-card{
+  background:#fff;border:1px solid var(--border);border-radius:var(--r-xl);padding:24px;
+  display:flex;flex-direction:column;gap:12px;box-shadow:var(--sh-sm);position:relative;
+  transition:transform var(--base) var(--ease),box-shadow var(--base);
+}
+.w-card:hover{transform:translateY(-3px);box-shadow:var(--sh-lg)}
+.w-ico{width:48px;height:48px;border-radius:var(--r-md);display:flex;align-items:center;justify-content:center}
+.w-ico svg{width:22px;height:22px;fill:none}
+.w-ico--g{background:rgba(34,197,94,.1);color:var(--green-dk)}
+.w-ico--b{background:rgba(59,130,246,.1);color:#2563eb}
+.w-ico--a{background:rgba(245,158,11,.1);color:#d97706}
+.w-ico--v{background:rgba(139,92,246,.1);color:#7c3aed}
+.w-title{font-size:13px;font-weight:600;color:var(--t3);letter-spacing:.02em}
+.w-sub{font-family:var(--fd);font-size:20px;font-weight:700;color:var(--navy)}
+.w-desc{font-size:12px;color:var(--t3);line-height:1.5}
+.w-chk{position:absolute;top:20px;right:20px}
+.w-chk svg{width:20px;height:20px}
+
+.wp-wrap{background:#fff;border:1px solid var(--border);border-radius:var(--r-xl);padding:24px 32px;box-shadow:var(--sh-sm)}
+.wp-head{display:flex;justify-content:space-between;font-size:14px;font-weight:600;color:var(--navy);margin-bottom:12px}
+.wp-bar{height:10px;background:var(--bg);border-radius:var(--r-f);overflow:visible;margin-bottom:12px;position:relative}
+.wp-fill{
+  height:100%;background:linear-gradient(90deg,var(--green-dim),var(--green));
+  border-radius:var(--r-f);width:8%;position:relative;
+  animation:bar-fill 1.2s var(--ease) 1.5s both;
+}
+.wp-fill::after{
+  content:'';position:absolute;right:-1px;top:50%;transform:translateY(-50%);
+  width:14px;height:14px;background:var(--green);border-radius:50%;
+  border:2px solid #fff;box-shadow:0 0 0 3px rgba(34,197,94,.2);
+}
+.wp-foot{display:flex;justify-content:space-between;font-size:12px;color:var(--t3)}
+
+/* ═══════════════════════════════════════════
+   AUTHENTICITY
+═══════════════════════════════════════════ */
+.auth-card{
+  background:linear-gradient(135deg,#0a1628 0%,#0f4c35 100%);
+  border-radius:var(--r-2xl);padding:40px 32px;
+  display:flex;flex-direction:column;align-items:center;text-align:center;gap:24px;
+  position:relative;overflow:hidden;box-shadow:var(--sh-xl);
+}
+.auth-glow{
+  position:absolute;top:-50%;left:50%;transform:translateX(-50%);
+  width:400px;height:400px;
+  background:radial-gradient(circle,rgba(34,197,94,.15) 0%,transparent 70%);
+  pointer-events:none;
+}
+.auth-ico svg{width:80px;height:80px}
+.auth-title{font-family:var(--fd);font-size:28px;font-weight:700;color:#fff}
+.auth-desc{font-size:15px;color:rgba(255,255,255,.65);max-width:520px;line-height:1.7}
+.auth-details{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;width:100%;max-width:480px}
+.a-item{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:var(--r-lg);padding:16px;text-align:left}
+.a-lbl{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:4px}
+.a-val{font-size:14px;font-weight:600;color:#fff}
+.a-val--g{color:var(--green)}
+.auth-badge{position:relative;display:flex;align-items:center;justify-content:center}
+.auth-badge svg{width:80px;height:80px;animation:spin-slow 20s linear infinite}
+.ab-text{position:absolute;display:flex;flex-direction:column;align-items:center;gap:1px}
+.ab-text span:first-child{font-size:8px;font-weight:800;letter-spacing:.1em;color:var(--green)}
+.ab-text span:last-child{font-size:10px;font-weight:700;color:#fff;letter-spacing:.05em}
+
+/* ═══════════════════════════════════════════
+   DOWNLOADS
+═══════════════════════════════════════════ */
+.dl-grid{display:grid;grid-template-columns:1fr;gap:16px}
+@media(min-width:480px){.dl-grid{grid-template-columns:repeat(3,1fr)}}
+
+.dl-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:24px;
+  display:flex;flex-direction:column;gap:16px;box-shadow:var(--sh-sm);
+  transition:transform var(--base) var(--ease),box-shadow var(--base);
+}
+.dl-card:hover{transform:translateY(-3px);box-shadow:var(--sh-lg)}
+.dl-ico{width:52px;height:52px;border-radius:var(--r-lg);display:flex;align-items:center;justify-content:center}
+.dl-ico svg{width:24px;height:24px;fill:none}
+.dl-ico--r{background:rgba(239,68,68,.1);color:#dc2626}
+.dl-ico--b{background:rgba(59,130,246,.1);color:#2563eb}
+.dl-ico--g{background:rgba(34,197,94,.1);color:var(--green-dk)}
+.dl-title{font-family:var(--fd);font-size:16px;font-weight:700;color:var(--navy)}
+.dl-desc{font-size:13px;color:var(--t3)}
+.dl-size{font-size:12px;color:var(--t3);font-weight:500}
+.dl-btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:10px 20px;border-radius:var(--r-md);font-size:14px;font-weight:600;
+  background:var(--navy);color:#fff;transition:background var(--fast),transform var(--fast);
+  width:fit-content;min-height:44px;touch-action:manipulation;font-family:var(--fb);
+}
+.dl-btn:hover{background:var(--navy-3);transform:translateY(-1px)}
+.dl-btn svg{width:16px;height:16px;fill:none}
+
+/* ═══════════════════════════════════════════
+   SUPPORT
+═══════════════════════════════════════════ */
+.sp-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+@media(min-width:768px){.sp-grid{grid-template-columns:repeat(4,1fr)}}
+
+.sp-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:20px;
+  display:flex;flex-direction:column;gap:12px;box-shadow:var(--sh-sm);
+  transition:transform var(--base) var(--ease),box-shadow var(--base);
+}
+.sp-card:hover{transform:translateY(-2px);box-shadow:var(--sh-md)}
+.sp-ico{width:44px;height:44px;border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;background:var(--navy)}
+.sp-ico svg{width:20px;height:20px;stroke:#fff;fill:none}
+.sp-lbl{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--t3)}
+.sp-val{font-size:14px;font-weight:600;color:var(--navy);word-break:break-word}
+.sp-link{font-size:14px;font-weight:600;color:var(--green-dk);text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color var(--fast)}
+.sp-link:hover{text-decoration-color:currentColor}
+
+/* ═══════════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════════ */
+.site-footer{background:var(--navy);padding:32px 0}
+.foot-inner{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.foot-brand{display:flex;align-items:center;gap:12px}
+.foot-brand .brand-name{color:#fff}
+.foot-copy{font-size:12px;color:rgba(255,255,255,.4);margin-top:2px}
+.foot-links{display:flex;gap:20px;flex-wrap:wrap}
+.foot-links a{font-size:13px;color:rgba(255,255,255,.5);transition:color var(--fast)}
+.foot-links a:hover{color:#fff}
+
+/* ═══════════════════════════════════════════
+   REDUCED MOTION
+═══════════════════════════════════════════ */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+  .loader-ring{animation:none;border-top-color:var(--green)}
+  .pulse{animation:none}
+}
+
+/* ═══════════════════════════════════════════
+   FOCUS
+═══════════════════════════════════════════ */
+:focus:not(:focus-visible){outline:none}
+:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     LOADING SCREEN
+══════════════════════════════════════ -->
+<div class="loader" aria-hidden="true">
+  <div class="loader-inner">
+    <div class="loader-ring"></div>
+    <svg class="loader-logo" viewBox="0 0 40 40" fill="none">
+      <circle cx="20" cy="20" r="18" stroke="#22c55e" stroke-width="2" opacity="0.3"/>
+      <path d="M12 20l5 5 11-10" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <p>Verifying product…</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     HEADER
+══════════════════════════════════════ -->
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a href="#" class="brand" aria-label="SolarVerify home">
+      <div class="brand-icon">
+        <svg viewBox="0 0 32 32" fill="none">
+          <rect width="32" height="32" rx="8" fill="#0f4c35"/>
+          <path d="M16 6l2.5 7h7.5l-6 4.5 2.5 7L16 20l-6.5 4.5 2.5-7L6 13h7.5z" fill="#22c55e"/>
+        </svg>
+      </div>
+      <div>
+        <span class="brand-name">SolarVerify</span>
+        <span class="brand-tagline">Authentic Energy Products</span>
+      </div>
+    </a>
+    <div class="hdr-badge" aria-label="Verified product">
+      <svg viewBox="0 0 20 20" fill="none">
+        <circle cx="10" cy="10" r="9" fill="#22c55e"/>
+        <path d="M6.5 10.5l2.5 2.5 4.5-5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Verified Product</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<!-- ══════════════════════════════════════
+     HERO
+══════════════════════════════════════ -->
+<section class="hero" aria-labelledby="product-name">
+  <div class="wrap">
+    <div class="hero-grid">
+
+      <!-- Image -->
+      <div class="hero-img-wrap">
+        <div class="hero-img-box">
+          <img
+            src="https://images.unsplash.com/photo-1509391366360-2e959784a276?w=800&q=80"
+            alt="Jinko Solar 550W Mono PERC Panel — front view"
+            loading="eager"
+          />
+          <div class="img-badge">
+            <svg viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="8" r="7" fill="#22c55e"/>
+              <path d="M5 8l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Genuine
+          </div>
+        </div>
+      </div>
+
+      <!-- Info -->
+      <div class="hero-info">
+        <div class="hero-cat">Solar Panel</div>
+        <h1 id="product-name" class="hero-title">Jinko Solar 550W Mono PERC Panel</h1>
+
+        <div class="hero-meta">
+          <div class="meta-row">
+            <span class="meta-lbl">Model</span>
+            <span class="meta-val mono">JKM550M-72HL4</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-lbl">Serial Number</span>
+            <span class="meta-val mono">RVSP2026000123</span>
+          </div>
+        </div>
+
+        <div class="hero-status">
+          <div class="pulse" aria-hidden="true"></div>
+          <svg viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="10" r="9" fill="#22c55e"/>
+            <path d="M6.5 10.5l2.5 2.5 4.5-5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>Authentic Product Verified</span>
+        </div>
+
+        <div class="hero-actions">
+          <a href="#warranty" class="btn btn-p">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M10 1.667L2.5 5v5.833C2.5 15.083 5.75 18.75 10 20c4.25-1.25 7.5-4.917 7.5-9.167V5L10 1.667z"/>
+            </svg>
+            View Warranty
+          </a>
+          <a href="#support" class="btn btn-s">Contact Support</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <div class="orb orb-1" aria-hidden="true"></div>
+  <div class="orb orb-2" aria-hidden="true"></div>
+</section>
+
+<!-- ══════════════════════════════════════
+     PRODUCT OVERVIEW
+══════════════════════════════════════ -->
+<section class="sec" aria-labelledby="ov-heading">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-label">Product Overview</div>
+      <h2 id="ov-heading" class="sec-title">Panel Specifications</h2>
+    </div>
+    <div class="ov-grid">
+
+      <div class="ov-card">
+        <div class="ov-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+        <div class="ov-lbl">Brand</div>
+        <div class="ov-val">Jinko Solar</div>
+      </div>
+
+      <div class="ov-card">
+        <div class="ov-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4" stroke-linecap="round"/></svg></div>
+        <div class="ov-lbl">Model</div>
+        <div class="ov-val">JKM550M-72HL4</div>
+      </div>
+
+      <div class="ov-card">
+        <div class="ov-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+        <div class="ov-lbl">Power Rating</div>
+        <div class="ov-val">550 Wp</div>
+      </div>
+
+      <div class="ov-card">
+        <div class="ov-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+        <div class="ov-lbl">Cell Type</div>
+        <div class="ov-val">Mono PERC</div>
+      </div>
+
+      <div class="ov-card">
+        <div class="ov-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <div class="ov-lbl">Efficiency</div>
+        <div class="ov-val">21.3%</div>
+      </div>
+
+      <div class="ov-card">
+        <div class="ov-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+        <div class="ov-lbl">Manufacture Date</div>
+        <div class="ov-val">November 2023</div>
+      </div>
+
+      <div class="ov-card">
+        <div class="ov-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8M12 3a17.3 17.3 0 010 18M12 3a17.3 17.3 0 000 18"/></svg></div>
+        <div class="ov-lbl">Country of Origin</div>
+        <div class="ov-val">China</div>
+      </div>
+
+      <div class="ov-card">
+        <div class="ov-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><circle cx="7" cy="7" r="1.5" fill="currentColor"/></svg></div>
+        <div class="ov-lbl">Category</div>
+        <div class="ov-val">Solar Panel</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     ELECTRICAL SPECS
+══════════════════════════════════════ -->
+<section class="sec sec--alt" aria-labelledby="specs-heading">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-label">Technical Data</div>
+      <h2 id="specs-heading" class="sec-title">Electrical Specifications</h2>
+      <p class="sec-sub">Measured at Standard Test Conditions (STC): 1000 W/m², 25°C, AM 1.5G</p>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>Parameter</th><th>Value</th><th>Unit</th></tr>
+        </thead>
+        <tbody>
+          <tr class="hi"><td>Maximum Power (Pmax)</td><td><span class="sv">550</span></td><td>Wp</td></tr>
+          <tr><td>Voltage at Pmax (Vmp)</td><td><span class="sv">41.8</span></td><td>V</td></tr>
+          <tr><td>Current at Pmax (Imp)</td><td><span class="sv">13.15</span></td><td>A</td></tr>
+          <tr><td>Open Circuit Voltage (Voc)</td><td><span class="sv">49.5</span></td><td>V</td></tr>
+          <tr><td>Short Circuit Current (Isc)</td><td><span class="sv">13.95</span></td><td>A</td></tr>
+          <tr class="hi"><td>Module Efficiency</td><td><span class="sv">21.3</span></td><td>%</td></tr>
+          <tr><td>Maximum System Voltage</td><td><span class="sv">1500</span></td><td>V DC</td></tr>
+          <tr><td>Operating Temperature</td><td><span class="sv">−40 to +85</span></td><td>°C</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+
+
+<!-- ══════════════════════════════════════
+     WARRANTY
+══════════════════════════════════════ -->
+<section class="sec sec--alt" id="warranty" aria-labelledby="war-heading">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-label">Protection</div>
+      <h2 id="war-heading" class="sec-title">Warranty Details</h2>
+    </div>
+
+    <div class="w-grid">
+      <!-- Product Warranty -->
+      <div class="w-card">
+        <div class="w-ico w-ico--g">
+          <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M12 2L3 6v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V6L12 2z"/><path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div>
+          <div class="w-title">Product Warranty</div>
+          <div class="w-sub">12 Years</div>
+          <div class="w-desc">Full coverage for manufacturing defects and material failures</div>
+        </div>
+        <div class="w-chk">
+          <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#22c55e"/><path d="M5 8l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+
+      <!-- Performance Warranty -->
+      <div class="w-card">
+        <div class="w-ico w-ico--b">
+          <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div>
+          <div class="w-title">Performance Warranty</div>
+          <div class="w-sub">25 Years</div>
+          <div class="w-desc">Guaranteed ≥80% of rated power output at end of warranty period</div>
+        </div>
+        <div class="w-chk">
+          <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#22c55e"/><path d="M5 8l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+
+      <!-- Installation Date -->
+      <div class="w-card">
+        <div class="w-ico w-ico--a">
+          <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        </div>
+        <div>
+          <div class="w-title">Installation Date</div>
+          <div class="w-sub">March 15, 2024</div>
+          <div class="w-desc">Date of professional installation and commissioning</div>
+        </div>
+        <div class="w-chk">
+          <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#22c55e"/><path d="M5 8l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+
+      <!-- Warranty Expiry -->
+      <div class="w-card">
+        <div class="w-ico w-ico--v">
+          <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        </div>
+        <div>
+          <div class="w-title">Warranty Expiration</div>
+          <div class="w-sub">March 15, 2049</div>
+          <div class="w-desc">Performance warranty valid until this date</div>
+        </div>
+        <div class="w-chk">
+          <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#22c55e"/><path d="M5 8l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+    </div>
+
+    
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     AUTHENTICITY
+══════════════════════════════════════ -->
+<section class="sec" aria-labelledby="auth-heading">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-label">Authenticity</div>
+      <h2 id="auth-heading" class="sec-title">Verification Result</h2>
+    </div>
+
+    <div class="auth-card">
+      <div class="auth-glow" aria-hidden="true"></div>
+      <div class="auth-ico">
+        <svg viewBox="0 0 64 64" fill="none">
+          <circle cx="32" cy="32" r="30" fill="#0f4c35" stroke="#22c55e" stroke-width="2"/>
+          <path d="M20 32l8 8 16-16" stroke="#22c55e" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h3 class="auth-title">Product Verified</h3>
+      <p class="auth-desc">This solar panel is registered in our database and has passed all authenticity checks. The serial number, model, and manufacturer details have been confirmed as genuine.</p>
+
+      <div class="auth-details">
+        
+        <div class="a-item">
+          <div class="a-lbl">Product Status</div>
+          <div class="a-val a-val--g">Genuine</div>
+        </div>
+        <div class="a-item">
+          <div class="a-lbl">Warranty Status</div>
+          <div class="a-val a-val--g">Active</div>
+        </div>
+      </div>
+
+      <div class="auth-badge">
+        <svg viewBox="0 0 80 80" fill="none">
+          <circle cx="40" cy="40" r="38" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <circle cx="40" cy="40" r="30" fill="#0a1628"/>
+          <path d="M40 18l4.5 12.5H57L46.5 38l4.5 12.5L40 43l-11 7.5L33.5 38l-10.5-7.5H35.5z" fill="#22c55e"/>
+        </svg>
+        <div class="ab-text">
+          <span>CERTIFIED</span>
+          <span>GENUINE</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     DOWNLOADS
+══════════════════════════════════════ -->
+<section class="sec sec--alt" aria-labelledby="dl-heading">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-label">Resources</div>
+      <h2 id="dl-heading" class="sec-title">Product Documents</h2>
+    </div>
+    <div class="dl-grid">
+
+      <div class="dl-card">
+        <div class="dl-ico dl-ico--r">
+          <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div>
+          <div class="dl-title">Datasheet PDF</div>
+          <div class="dl-desc">Full product specifications and certifications</div>
+          <div class="dl-size">2.4 MB</div>
+        </div>
+        <a href="#" class="dl-btn">
+          <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download
+        </a>
+      </div>
+
+      <div class="dl-card">
+        <div class="dl-ico dl-ico--b">
+          <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        </div>
+        <div>
+          <div class="dl-title">Installation Manual</div>
+          <div class="dl-desc">Step-by-step professional installation guide</div>
+          <div class="dl-size">5.1 MB</div>
+        </div>
+        <a href="#" class="dl-btn">
+          <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download
+        </a>
+      </div>
+
+      <div class="dl-card">
+        <div class="dl-ico dl-ico--g">
+          <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M12 2L3 6v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V6L12 2z"/><path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div>
+          <div class="dl-title">Warranty Certificate</div>
+          <div class="dl-desc">Official warranty document for your records</div>
+          <div class="dl-size">0.8 MB</div>
+        </div>
+        <a href="#" class="dl-btn">
+          <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download
+        </a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     SUPPORT
+══════════════════════════════════════ -->
+<section class="sec" id="support" aria-labelledby="sp-heading">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-label">Help &amp; Support</div>
+      <h2 id="sp-heading" class="sec-title">Contact Us</h2>
+      <p class="sec-sub">Our technical team is available to assist you with installation, maintenance, and warranty claims.</p>
+    </div>
+    <div class="sp-grid">
+
+      <div class="sp-card">
+        <div class="sp-ico"><svg viewBox="0 0 24 24" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 01-2.18 2A19.79 19.79 0 012.11 5.19 2 2 0 014.09 3h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 10.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
+        <div class="sp-lbl">Phone</div>
+        <a href="tel:+18007654321" class="sp-link">+1 (800) 765-4321</a>
+      </div>
+
+      <div class="sp-card">
+        <div class="sp-ico"><svg viewBox="0 0 24 24" stroke-width="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+        <div class="sp-lbl">Email</div>
+        <a href="mailto:support@solarverify.com" class="sp-link">support@solarverify.com</a>
+      </div>
+
+      <div class="sp-card">
+        <div class="sp-ico"><svg viewBox="0 0 24 24" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8M12 3a17.3 17.3 0 010 18M12 3a17.3 17.3 0 000 18"/></svg></div>
+        <div class="sp-lbl">Website</div>
+        <a href="https://www.solarverify.com" class="sp-link" target="_blank" rel="noopener">www.solarverify.com</a>
+      </div>
+
+      <div class="sp-card">
+        <div class="sp-ico"><svg viewBox="0 0 24 24" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+        <div class="sp-lbl">Address</div>
+        <div class="sp-val">12 Renewable Way, San Francisco, CA 94105</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ══════════════════════════════════════
+     FOOTER
+══════════════════════════════════════ -->
+<footer class="site-footer">
+  <div class="wrap foot-inner">
+    <div class="foot-brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 32 32" fill="none">
+          <rect width="32" height="32" rx="8" fill="#0f4c35"/>
+          <path d="M16 6l2.5 7h7.5l-6 4.5 2.5 7L16 20l-6.5 4.5 2.5-7L6 13h7.5z" fill="#22c55e"/>
+        </svg>
+      </div>
+      <div>
+        <span class="brand-name">Rv Power</span>
+        <p class="foot-copy">© 2026 Rv Power. All rights reserved.</p>
+      </div>
+    </div>
+    <nav class="foot-links" aria-label="Footer navigation">
+      <a href="#">Privacy Policy</a>
+      <a href="#">Terms of Service</a>
+      <a href="#support">Support</a>
+    </nav>
+  </div>
+</footer>
+
+</body>
+</html>
+HTMLEOF
